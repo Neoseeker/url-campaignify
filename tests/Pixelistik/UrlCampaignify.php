@@ -5,6 +5,10 @@ use \Pixelistik\UrlCampaignify;
 
 class UrlCampaignifyTest extends \PHPUnit_Framework_TestCase
 {
+	/**
+	 * @var UrlCampaignify $uc
+	 */
+	protected $uc;
     public function setUp()
     {
         $this->uc = new UrlCampaignify();
@@ -19,24 +23,24 @@ class UrlCampaignifyTest extends \PHPUnit_Framework_TestCase
     {
         // Just a campaign added
         $input = 'http://test.de';
-        $expected = 'http://test.de?pk_campaign=newsletter-nov-2012';
+        $expected = 'http://test.de?utm_campaign=newsletter-nov-2012&utm_medium=email';
         $result = $this->uc->campaignify($input, 'newsletter-nov-2012');
         $this->assertEquals($expected, $result);
 
         $input = 'http://test.de/kontakt.html';
-        $expected = 'http://test.de/kontakt.html?pk_campaign=newsletter-nov-2012';
+        $expected = 'http://test.de/kontakt.html?utm_campaign=newsletter-nov-2012&utm_medium=email';
         $result = $this->uc->campaignify($input, 'newsletter-nov-2012');
         $this->assertEquals($expected, $result);
 
         // A campaign added plus keyword
         $input = 'http://test.de';
-        $expected = 'http://test.de?pk_campaign=newsletter-nov-2012&pk_kwd=link1';
-        $result = $this->uc->campaignify($input, 'newsletter-nov-2012', 'link1');
+        $expected = 'http://test.de?utm_campaign=newsletter-nov-2012&utm_term=link1&utm_medium=email';
+        $result = $this->uc->campaignify($input, 'newsletter-nov-2012', '', 'email', 'link1');
         $this->assertEquals($expected, $result);
 
         $input = 'http://test.de/impressum.htm';
-        $expected = 'http://test.de/impressum.htm?pk_campaign=newsletter-nov-2012&pk_kwd=link1';
-        $result = $this->uc->campaignify($input, 'newsletter-nov-2012', 'link1');
+        $expected = 'http://test.de/impressum.htm?utm_campaign=newsletter-nov-2012&utm_term=link1&utm_medium=email';
+        $result = $this->uc->campaignify($input, 'newsletter-nov-2012', '', 'email', 'link1');
         $this->assertEquals($expected, $result);
     }
 
@@ -47,7 +51,7 @@ class UrlCampaignifyTest extends \PHPUnit_Framework_TestCase
     public function testSingleUrlsQuerySign()
     {
         $input = 'http://test.de?';
-        $expected = 'http://test.de?pk_campaign=newsletter-nov-2012';
+        $expected = 'http://test.de?utm_campaign=newsletter-nov-2012&utm_medium=email';
         $result = $this->uc->campaignify($input, 'newsletter-nov-2012');
         $this->assertEquals($expected, $result);
     }
@@ -60,14 +64,14 @@ class UrlCampaignifyTest extends \PHPUnit_Framework_TestCase
     {
         // Just a campaign added
         $input = 'http://test.de?param1=one&param2=two';
-        $expected = 'http://test.de?param1=one&param2=two&pk_campaign=newsletter-nov-2012';
+        $expected = 'http://test.de?param1=one&param2=two&utm_campaign=newsletter-nov-2012&utm_medium=email';
         $result = $this->uc->campaignify($input, 'newsletter-nov-2012');
         $this->assertEquals($expected, $result);
 
         // A campaign added plus keyword
         $input = 'http://test.de?p1=one&param2=two';
-        $expected = 'http://test.de?p1=one&param2=two&pk_campaign=newsletter-nov-2012&pk_kwd=link1';
-        $result = $this->uc->campaignify($input, 'newsletter-nov-2012', 'link1');
+        $expected = 'http://test.de?p1=one&param2=two&utm_campaign=newsletter-nov-2012&utm_term=link1&utm_medium=email';
+        $result = $this->uc->campaignify($input, 'newsletter-nov-2012', '', 'email', 'link1');
         $this->assertEquals($expected, $result);
     }
 
@@ -78,13 +82,13 @@ class UrlCampaignifyTest extends \PHPUnit_Framework_TestCase
     {
         // Given URL already has urlencoded strings
         $input = 'http://test.de?p1=one%2Cvalue&param2=two';
-        $expected = 'http://test.de?p1=one%2Cvalue&param2=two&pk_campaign=newsletter-nov-2012&pk_kwd=link1';
-        $result = $this->uc->campaignify($input, 'newsletter-nov-2012', 'link1');
+        $expected = 'http://test.de?p1=one%2Cvalue&param2=two&utm_campaign=newsletter-nov-2012&utm_term=link1&utm_medium=email';
+        $result = $this->uc->campaignify($input, 'newsletter-nov-2012', '', 'email', 'link1');
         $this->assertEquals($expected, $result);
         // Campaign and keyword have chars that need to be urlencoded, too
         $input = 'http://test.de?p1=one%2Cvalue&param2=two';
-        $expected = 'http://test.de?p1=one%2Cvalue&param2=two&pk_campaign=newsletter+nov%2C2012&pk_kwd=link%2C1';
-        $result = $this->uc->campaignify($input, 'newsletter nov,2012', 'link,1');
+        $expected = 'http://test.de?p1=one%2Cvalue&param2=two&utm_campaign=newsletter+nov%2C2012&utm_term=link%2C1&utm_medium=email';
+        $result = $this->uc->campaignify($input, 'newsletter nov,2012', '', 'email', 'link,1');
         $this->assertEquals($expected, $result);
     }
 
@@ -94,22 +98,22 @@ class UrlCampaignifyTest extends \PHPUnit_Framework_TestCase
     public function testSingleUrlsExistingCampaign()
     {
         // Just a campaign existing, should stay
-        $input = 'http://test.de?pk_campaign=leave-me-alone';
-        $expected = 'http://test.de?pk_campaign=leave-me-alone';
+        $input = 'http://test.de?utm_campaign=leave-me-alone';
+        $expected = 'http://test.de?utm_campaign=leave-me-alone';
         $result = $this->uc->campaignify($input, 'override-attempt');
         $this->assertEquals($expected, $result);
 
         // A campaign plus keyword existing
-        $input = 'http://test.de?pk_campaign=leave-me-alone&pk_kwd=me-too';
-        $expected = 'http://test.de?pk_campaign=leave-me-alone&pk_kwd=me-too';
-        $result = $this->uc->campaignify($input, 'override-attempt', 'override-attempt');
+        $input = 'http://test.de?utm_campaign=leave-me-alone&utm_term=me-too';
+        $expected = 'http://test.de?utm_campaign=leave-me-alone&utm_term=me-too';
+        $result = $this->uc->campaignify($input, 'override-attempt', '', 'email', 'override-attempt');
         $this->assertEquals($expected, $result);
 
         // A campaign existing, keyword should NOT be added
         // (keywords mostly make no sense without their campaign)
-        $input = 'http://test.de?pk_campaign=leave-me-alone';
-        $expected = 'http://test.de?pk_campaign=leave-me-alone';
-        $result = $this->uc->campaignify($input, 'override-attempt', 'override-attempt');
+        $input = 'http://test.de?utm_campaign=leave-me-alone';
+        $expected = 'http://test.de?utm_campaign=leave-me-alone';
+        $result = $this->uc->campaignify($input, 'override-attempt', '', 'email', 'override-attempt');
         $this->assertEquals($expected, $result);
     }
 
@@ -119,7 +123,7 @@ class UrlCampaignifyTest extends \PHPUnit_Framework_TestCase
     public function testSingleUrlsUrlInParam()
     {
         $input = 'http://test.de?share=http%3A%2F%2Fexample.org';
-        $expected = 'http://test.de?share=http%3A%2F%2Fexample.org&pk_campaign=news';
+        $expected = 'http://test.de?share=http%3A%2F%2Fexample.org&utm_campaign=news&utm_medium=email';
         $result = $this->uc->campaignify($input, 'news');
         $this->assertEquals($expected, $result);
     }
@@ -127,15 +131,16 @@ class UrlCampaignifyTest extends \PHPUnit_Framework_TestCase
     public function testDomainSpecific()
     {
         $this->uc = new UrlCampaignify('test.com');
+	    $this->uc->set_campaignify_subdomains(false);
 
         // Campaigify specified domain
         $input = 'http://test.com';
-        $expected = 'http://test.com?pk_campaign=news';
+        $expected = 'http://test.com?utm_campaign=news&utm_medium=email';
         $result = $this->uc->campaignify($input, 'news');
         $this->assertEquals($expected, $result);
 
         $input = 'http://test.com/?param=one';
-        $expected = 'http://test.com/?param=one&pk_campaign=news';
+        $expected = 'http://test.com/?param=one&utm_campaign=news&utm_medium=email';
         $result = $this->uc->campaignify($input, 'news');
         $this->assertEquals($expected, $result);
 
@@ -156,6 +161,45 @@ class UrlCampaignifyTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals($expected, $result);
     }
 
+	public function testDomainSpecificWithSubDomains()
+	{
+		$this->uc = new UrlCampaignify('test.com');
+
+		// Campaigify specified domain
+		$input = 'http://sub.test.com';
+		$expected = 'http://sub.test.com?utm_campaign=news&utm_medium=email';
+		$result = $this->uc->campaignify($input, 'news');
+		$this->assertEquals($expected, $result);
+
+		$input = 'http://sub.test.com/?param=one';
+		$expected = 'http://sub.test.com/?param=one&utm_campaign=news&utm_medium=email';
+		$result = $this->uc->campaignify($input, 'news');
+		$this->assertEquals($expected, $result);
+
+		// Do not campaignify other domains, including subdomains of the configured
+		$input = 'http://www.test.com';
+		$expected = 'http://www.test.com?utm_campaign=news&utm_medium=email';
+		$result = $this->uc->campaignify($input, 'news');
+		$this->assertEquals($expected, $result);
+
+		//domains that aren't the exact match won't be counted
+		$input = 'http://test.de';
+		$expected = 'http://test.de';
+		$result = $this->uc->campaignify($input, 'news');
+		$this->assertEquals($expected, $result);
+
+		$input = 'http://test.com.sg';
+		$expected = 'http://test.com.sg';
+		$result = $this->uc->campaignify($input, 'news');
+		$this->assertEquals($expected, $result);
+
+
+		$input = 'http://test.de/1.html';
+		$expected = 'http://test.de/1.html';
+		$result = $this->uc->campaignify($input, 'news');
+		$this->assertEquals($expected, $result);
+	}
+
     public function testDomainSpecificMultiple()
     {
         $this->uc = new UrlCampaignify(
@@ -164,17 +208,17 @@ class UrlCampaignifyTest extends \PHPUnit_Framework_TestCase
 
         // Campaignify specified domains
         $input = 'http://test.com';
-        $expected = 'http://test.com?pk_campaign=news';
+        $expected = 'http://test.com?utm_campaign=news&utm_medium=email';
         $result = $this->uc->campaignify($input, 'news');
         $this->assertEquals($expected, $result);
 
         $input = 'http://www.test.com';
-        $expected = 'http://www.test.com?pk_campaign=news';
+        $expected = 'http://www.test.com?utm_campaign=news&utm_medium=email';
         $result = $this->uc->campaignify($input, 'news');
         $this->assertEquals($expected, $result);
 
         $input = 'http://testing.com';
-        $expected = 'http://testing.com?pk_campaign=news';
+        $expected = 'http://testing.com?utm_campaign=news&utm_medium=email';
         $result = $this->uc->campaignify($input, 'news');
         $this->assertEquals($expected, $result);
 
@@ -200,11 +244,11 @@ class UrlCampaignifyTest extends \PHPUnit_Framework_TestCase
         aliquyam erat, sed diam voluptua.
         At http://test.co.uk/test.html";
 
-        $expected = "Lorem ipsum dolor https://test.com/?pk_campaign=news sit
+        $expected = "Lorem ipsum dolor https://test.com/?utm_campaign=news&utm_medium=email sit
         amet, consetetur sadipscing elitr,
         sed diam nonumy eirmod tempor invidunt ut labore et dolore magna
         aliquyam erat, sed diam voluptua.
-        At http://test.co.uk/test.html?pk_campaign=news";
+        At http://test.co.uk/test.html?utm_campaign=news&utm_medium=email";
 
         $result = $this->uc->campaignify($input, 'news');
         $this->assertEquals($expected, $result);
@@ -217,7 +261,7 @@ class UrlCampaignifyTest extends \PHPUnit_Framework_TestCase
     {
         $input = "Lorem http://test.com ipsum http://test.com";
 
-        $expected = "Lorem http://test.com?pk_campaign=news ipsum http://test.com?pk_campaign=news";
+        $expected = "Lorem http://test.com?utm_campaign=news&utm_medium=email ipsum http://test.com?utm_campaign=news&utm_medium=email";
 
         $result = $this->uc->campaignify($input, 'news');
         $this->assertEquals($expected, $result);
@@ -230,7 +274,7 @@ class UrlCampaignifyTest extends \PHPUnit_Framework_TestCase
     {
         $input = "Lorem <http://test.com>";
 
-        $expected = "Lorem <http://test.com?pk_campaign=news>";
+        $expected = "Lorem <http://test.com?utm_campaign=news&utm_medium=email>";
 
         $result = $this->uc->campaignify($input, 'news');
         $this->assertEquals($expected, $result);
@@ -243,7 +287,7 @@ class UrlCampaignifyTest extends \PHPUnit_Framework_TestCase
     {
         $input = "Please go to http://test.com.";
 
-        $expected = "Please go to http://test.com?pk_campaign=news.";
+        $expected = "Please go to http://test.com?utm_campaign=news&utm_medium=email.";
 
         $result = $this->uc->campaignify($input, 'news');
         $this->assertEquals($expected, $result);
@@ -259,17 +303,17 @@ class UrlCampaignifyTest extends \PHPUnit_Framework_TestCase
     public function testAutoIncreasedKeywordFormatting()
     {
         $input = "This http://test.com and that http://test.com";
-        $expected = "This http://test.com?pk_campaign=news&pk_kwd=link-1 and ".
-            "that http://test.com?pk_campaign=news&pk_kwd=link-2";
+        $expected = "This http://test.com?utm_campaign=news&utm_term=link-1&utm_medium=email and ".
+            "that http://test.com?utm_campaign=news&utm_term=link-2&utm_medium=email";
 
-        $result = $this->uc->campaignify($input, 'news', 'link-%d', true);
+        $result = $this->uc->campaignify($input, 'news', '', 'email', 'link-%d');
         $this->assertEquals($expected, $result);
 
         $input = "This http://test.com and that http://test.com";
-        $expected = "This http://test.com?pk_campaign=news&pk_kwd=1 and ".
-            "that http://test.com?pk_campaign=news&pk_kwd=2";
+        $expected = "This http://test.com?utm_campaign=news&utm_term=1 and ".
+            "that http://test.com?utm_campaign=news&utm_term=2";
 
-        $result = $this->uc->campaignify($input, 'news', '%d', true);
+        $result = $this->uc->campaignify($input, 'news', '', '', '%d');
         $this->assertEquals($expected, $result);
     }
 
@@ -283,7 +327,7 @@ class UrlCampaignifyTest extends \PHPUnit_Framework_TestCase
         $input = 'Hello. <a href="http://test.com">Page</a>.'.
             'More http://test.com/nope.htm';
 
-        $expected = 'Hello. <a href="http://test.com?pk_campaign=yes">Page</a>.'.
+        $expected = 'Hello. <a href="http://test.com?utm_campaign=yes&utm_medium=email">Page</a>.'.
             'More http://test.com/nope.htm';
 
         $result = $this->uc->campaignifyHref($input, 'yes');
@@ -297,14 +341,14 @@ class UrlCampaignifyTest extends \PHPUnit_Framework_TestCase
     {
         // More whitespace
         $input = 'Hello. <a href = "http://test.com">Page</a>.';
-        $expected = 'Hello. <a href = "http://test.com?pk_campaign=yes">Page</a>.';
+        $expected = 'Hello. <a href = "http://test.com?utm_campaign=yes&utm_medium=email">Page</a>.';
 
         $result = $this->uc->campaignifyHref($input, 'yes');
         $this->assertEquals($expected, $result);
 
         // Single quotes
         $input = "Hello. <a href='http://test.com'>Page</a>.";
-        $expected = "Hello. <a href='http://test.com?pk_campaign=yes'>Page</a>.";
+        $expected = "Hello. <a href='http://test.com?utm_campaign=yes&utm_medium=email'>Page</a>.";
 
         $result = $this->uc->campaignifyHref($input, 'yes');
         $this->assertEquals($expected, $result);

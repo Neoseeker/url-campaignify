@@ -1,19 +1,18 @@
-[![Build Status](https://travis-ci.org/pixelistik/url-campaignify.png)](https://travis-ci.org/pixelistik/url-campaignify)
-
 ## URL-Campaignify
 
 ### Background
 
-The open source web analytics tool Piwik can use campaigns and keywords
-for categorising incoming links. They work by appending additional GET
+This is a tool to help add Google Analytics campaign tracking paramters to URLs and entire text blocks.
+
+It was [originally written by pixelistik](https://github.com/pixelistik/url-campaignify) to add campaign links for Piwik, an open source web analytics tool.
+
+This fork has been modified to work only with Google Analytics and supports all of GA's
+campaign paramters for categorising incoming links. This tool works by appending additional GET
 params to your HTTP URLs:
 
-    http://my-site.tld/?pk_campaign=newsletter-5&pk_kwd=header-link
+    http://my-site.tld/?utm_campaign=newsletter-5&utm_term=header-link&medium=email&utm_source=response
 
-[Read more about this technique in the Piwik docs](http://piwik.org/docs/tracking-campaigns/)
-
-[Google analytics](https://support.google.com/analytics/bin/answer.py?hl=en&answer=1033863)
-and probably most other analytics tool do basically the same thing.
+[Read more about this on Google analytics](https://support.google.com/analytics/bin/answer.py?hl=en&answer=1033863).
 
 ### What
 
@@ -31,7 +30,7 @@ Instead of worrying about `?` and `&` you can just do this:
 
 The result has properly appended parameters:
 
-    http://some-blog.tld/cms.php?post=123&layout=default&pk_campaign=newsletter-5&pk_kwd=header-link
+    http://some-blog.tld/cms.php?post=123&layout=default&utm_campaign=newsletter-5&utm_term=header-link
 
 #### Text blocks
 
@@ -52,7 +51,7 @@ in `href` attributes. Use `campaignifyHref()` for this. It will turn
 
 into
 
-    See <a href="http://site.tld?pk_campaign=foo">http://site.tld</a> for more information.
+    See <a href="http://site.tld?utm_campaign=foo">http://site.tld</a> for more information.
 
 Have a look at the test cases to see which situations and edge cases have been
 covered -- or not.
@@ -73,9 +72,9 @@ if you want to differentiate between several identical URLs in one text.
 
 Will give you
 
-    Here comes the header link: http://my-site.tld?pk_campaign=news&pk_kwd=link-1
+    Here comes the header link: http://my-site.tld?utm_campaign=news&utm_term=link-1
     here is a long and verbose text and another link at the end:
-    http://my-site.tld?pk_campaign=news&pk_kwd=link-2";
+    http://my-site.tld?utm_campaign=news&utm_term=link-2";
 
 #### Domains
 
@@ -85,11 +84,21 @@ to only work on URLs on a given Domain. Just pass it to the constructor
 
     $uc = new UrlCampaignify('my-site.tld')
 
-Note that subdomains are not automatically included, so the above instance will
-*not* touch URLs on `www.my-site.tld`. You can specify multiple domains as an
-array, though:
+Note that subdomains are automatically included (this differ's from the original behaviour),
+so the above instance *will* touch URLs on `www.my-site.tld`.
+
+You can disable this automatic behaviour by using
+
+    $uc->set_campaignify_subdomains(false);
+
+You can specify multiple domains as an array:
 
     $uc = new UrlCampaignify(array('my-site.tld', 'www.my-site.tld', 'my-other-site.tld'))
+
+### Major Differences Between This Fork and Original
+
+1. Subdomains will be modified by default.
+2. The campaignify() and campaignifyHref() methods has been modified to accept Google Analytics parameters
 
 ### Installation
 
@@ -98,7 +107,7 @@ array, though:
 URL-Campaignify matches the PSR-0 file layout and is on packagist. You should
 be able to simply type
 
-    composer require  pixelistik/url-campaignify:dev-master
+    composer require  neoseeker/url-campaignify:dev-master
     composer install
 
 to get the latest code from the master branch included into your project.
@@ -106,4 +115,4 @@ to get the latest code from the master branch included into your project.
 #### Just grabbing the file
 
 You can also simply download the single file that provides the class:
-https://github.com/pixelistik/url-campaignify/raw/master/src/Pixelistik/UrlCampaignify.php
+https://github.com/Neoseeker/url-campaignify/raw/master/src/Pixelistik/UrlCampaignify.php

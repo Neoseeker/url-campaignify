@@ -1,11 +1,15 @@
 <?php
 /**
- * Utility class that helps adding web statistics campaigns to URLs
+ * Utility class that helps adding gooogle analytics campaigns to URLs
  *
- * Many web statistics tools, like Piwik or Google Analytics allow you
- * to add a campaign and a keyword to a URL, so you can track the sources
- * of your traffic better. This class aims to be a convenient way to add
- * such parameters to any URL or even a string containing multiple URLs.
+ * You can track the sources of your traffic better. This class aims to
+ * be a convenient way to add such parameters to any URL or even a string
+ * containing multiple URLs.
+ *
+ * This is based on Pixelistik url-campaignify but modified to
+ * handle only Google Analytics campaigns.
+ *
+ * It also treats all subdomains when told to only translate certain domains
  *
  * @package UrlCampaignify
  * @author  Pixelistik <code@pixelistik.de>
@@ -26,40 +30,35 @@ class UrlCampaignify
      * Taken from
      * http://stackoverflow.com/a/2015516/376138
      * (except added beginning/end conditions)
+     *
+     * Changed to fix a bug where inclusion of single quotes
+     * breaks the regexp when large strings use href=''
     */
     const URL_REGEX =
         '/((href\s*=\s*["\'])?)                                 # optional preceding href attribute
         ((https?):\/\/                                          # protocol
-        (([a-z0-9$_\.\+!\*\'\(\),;\?&=-]|%[0-9a-f]{2})+         # username
-        (:([a-z0-9$_\.\+!\*\'\(\),;\?&=-]|%[0-9a-f]{2})+)?      # password
+        (([a-z0-9$_\.\+!\*\(\),;\?&=-]|%[0-9a-f]{2})+         # username
+        (:([a-z0-9$_\.\+!\*\(\),;\?&=-]|%[0-9a-f]{2})+)?      # password
         @)?(?#                                                  # auth requires @
         )((([a-z0-9]\.|[a-z0-9][a-z0-9-]*[a-z0-9]\.)*           # domain segments AND
         [a-z][a-z0-9-]*[a-z0-9]                                 # top level domain  OR
         |((\d|[1-9]\d|1\d{2}|2[0-4][0-9]|25[0-5])\.){3}
         (\d|[1-9]\d|1\d{2}|2[0-4][0-9]|25[0-5])                 # IP address
         )(:\d+)?                                                # port
-        )(((\/+([a-z0-9$_\.\+!\*\'\(\),;:@&=-]|%[0-9a-f]{2})*)* # path
-        (\?([a-z0-9$_\.\+!\*\'\(\),;:@&=-]|%[0-9a-f]{2})*)      # query string
+        )(((\/+([a-z0-9$_\.\+!\*\(\),;:@&=-]|%[0-9a-f]{2})*)* # path
+        (\?([a-z0-9$_\.\+!\*\(\),;:@&=-]|%[0-9a-f]{2})*)      # query string
         ?)?)?                                                   # path and query string optional
-        (#([a-z0-9$_\.\+!\*\'\(\),;:@&=-]|%[0-9a-f]{2})*)?      # fragment
+        (#([a-z0-9$_\.\+!\*\(\),;:@&=-]|%[0-9a-f]{2})*)?      # fragment
         ))/ix';
-    /**
-     * Name of the URL param for a campaign
-     */
-    protected $campaignKey = 'pk_campaign';
-    /**
-     * Name of the URL param for a keyword
-     */
-    protected $keywordKey = 'pk_kwd';
 
-    /**
-     * Value for the campaign name that should be added to URLs
-     */
-    protected $campaignValue = null;
-    /**
-     * Value for the keyword that should be added to URLs
-     */
-    protected $keywordValue = null;
+
+	protected $utm_source;
+	protected $utm_medium;
+	protected $utm_term;
+	protected $utm_content;
+	protected $utm_campaign;
+
+	protected $campaignify_subdomains = true;
 
     /**
      * Counter that starts at 1 and is increased for every URL found in a
@@ -83,22 +82,33 @@ class UrlCampaignify
     /**
      * Constructor
      *
-     * @param String/Array $domain Optional. A single string or an array of strings
-     *     that restricts URL modification to URLs of that domain.
+     * @param String|Array $domain Optional. A single string or an array of strings
      */
     public function __construct($domain = null)
     {
-        if (is_string($domain)) {
-            $domain = array($domain);
-        }
-        $this->domain = $domain;
+	    $this->add_domains($domain);
     }
 
-    /**
+	/**
+	 * @param String|Array $domain Optional. A single string or an array of strings
+	 */
+	public function add_domains($domain) {
+		if (is_string($domain)) {
+			$domain = array($domain);
+		}
+		if (isset($this->domain)) {
+			$this->domain = array_merge($this->domain,$domain);
+		} else {
+			$this->domain = $domain;
+		}
+	}
+
+	/**
      * Add a campaign and (optionally) keyword param to a single URL. This is
      *     used as a callback for preg_replace_callback().
      *
      * @param Array $urlMatches Matches of a regex, containing URLs.
+     * @return string
      */
     protected function campaignifyUrl($urlMatches)
     {
@@ -113,7 +123,11 @@ class UrlCampaignify
         // Are we on hrefOnly and not in a href attribute?
         $skipOnHref = $this->hrefOnly && $hrefPart === "";
         // Is a domain configured and we are not on it?
-        $skipOnDomain = $this->domain && !in_array($domain, $this->domain);
+	    if ($this->campaignify_subdomains) {
+		    $skipOnDomain = $this->domain && !preg_match("/^(.+\.)?(".implode('|',$this->domain).")$/i",$domain);
+	    } else {
+		    $skipOnDomain = $this->domain && !in_array($domain, $this->domain);
+	    }
 
         if ($skipOnHref || $skipOnDomain) {
             $newUrl = $url;
@@ -125,14 +139,21 @@ class UrlCampaignify
             parse_str($query, $params);
 
             // Add our params, if no campaign is there yet, plus keyword if given
-            if (!isset($params[$this->campaignKey])) {
-                $params[$this->campaignKey] = $this->campaignValue;
-                if ($this->keywordValue) {
+            if (!isset($params['utm_campaign'])) {
+                $params['utm_campaign'] = $this->utm_campaign;
+                if ($this->utm_term) {
                     // Put URL count into formatted keyword string (if given)
-                    $keywordValue = sprintf($this->keywordValue, $this->urlInTextNumber);
+                    $keywordValue = sprintf($this->utm_term, $this->urlInTextNumber);
 
-                    $params[$this->keywordKey] = $keywordValue;
+                    $params['utm_term'] = $keywordValue;
                 }
+	            $utm_params = array('utm_source','utm_medium','utm_content');
+	            foreach ($utm_params as $utm_param) {
+		            if ($this->$utm_param) {
+			            // Put URL count into formatted keyword string (if given)
+			            $params[$utm_param] = $this->$utm_param;
+		            }
+	            }
             }
 
             $newQuery = http_build_query($params);
@@ -154,19 +175,25 @@ class UrlCampaignify
         return $hrefPart . $newUrl;
     }
 
-    /**
-     * Add a campaign and (optionally) keyword param to all URLs in a text
-     *
-     * @param string $text     The text in which the URLs should be campaignified.
-     * @param string $campaign The campaign name that should be added.
-     * @param string $keyword  Optional. The keyword that should be added.
-     *
-     * @return string The text with campaignified URLs.
-     */
-    public function campaignify($text, $campaign, $keyword = null)
+	/**
+	 * Add a campaign and (optionally) keyword param to all URLs in a text
+	 *
+	 * @param string $text     The text in which the URLs should be campaignified.
+	 * @param string $utm_campaign
+	 * @param string $utm_source
+	 * @param string $utm_medium
+	 * @param string $utm_term
+	 * @param string $utm_content
+	 *
+	 * @return string The text with campaignified URLs.
+	 */
+    public function campaignify($text, $utm_campaign='',$utm_source='',$utm_medium='email',$utm_term='',$utm_content='')
     {
-        $this->campaignValue = $campaign;
-        $this->keywordValue = $keyword;
+	    $this->utm_campaign = $utm_campaign;
+	    $this->utm_source = $utm_source;
+	    $this->utm_medium = $utm_medium;
+	    $this->utm_term = $utm_term;
+	    $this->utm_content = $utm_content;
 
         $this->urlInTextNumber = 1;
 
@@ -177,19 +204,26 @@ class UrlCampaignify
         return $text;
     }
 
-    /**
-     * Add a campaign and (optionally) keyword param to all URLs in href attributes
-     *
-     * @param string $text     The text in which the URLs should be campaignified.
-     * @param string $campaign The campaign name that should be added.
-     * @param string $keyword  Optional. The keyword that should be added.
-     *
-     * @return string The text with campaignified URLs.
-     */
-    public function campaignifyHref($text, $campaign, $keyword = null)
+	/**
+	 * Add a campaign and (optionally) keyword param to all URLs in href attributes
+	 *
+	 * @param string $text     The text in which the URLs should be campaignified.
+	 * @param string $utm_campaign
+	 * @param string $utm_source
+	 * @param string $utm_medium
+	 * @param string $utm_term
+	 * @param string $utm_content
+	 *
+	 * @return string The text with campaignified URLs.
+	 */
+    public function campaignifyHref($text, $utm_campaign='',$utm_source='',$utm_medium='email',$utm_term='',$utm_content='')
     {
-        $this->campaignValue = $campaign;
-        $this->keywordValue = $keyword;
+
+	    $this->utm_campaign = $utm_campaign;
+	    $this->utm_source = $utm_source;
+	    $this->utm_medium = $utm_medium;
+	    $this->utm_term = $utm_term;
+	    $this->utm_content = $utm_content;
 
         $this->urlInTextNumber = 1;
 
@@ -199,4 +233,12 @@ class UrlCampaignify
 
         return $text;
     }
+
+	/**
+	 *
+	 * @param $campaignify_subdomains bool
+	 */
+	function set_campaignify_subdomains($campaignify_subdomains) {
+		$this->campaignify_subdomains = $campaignify_subdomains;
+	}
 }

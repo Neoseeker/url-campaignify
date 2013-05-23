@@ -1,5 +1,5 @@
 {
-    "name": "pixelistik/url-campaignify",
+    "name": "neoseeker/url-campaignify",
     "description": "A PHP class to help add web analytics campaigns to URLs.",
     "license": "MIT",
     "require": {
