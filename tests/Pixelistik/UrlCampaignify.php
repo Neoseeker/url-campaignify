@@ -99,20 +99,21 @@ class UrlCampaignifyTest extends \PHPUnit_Framework_TestCase
     {
         // Just a campaign existing, should stay
         $input = 'http://test.de?utm_campaign=leave-me-alone';
-        $expected = 'http://test.de?utm_campaign=leave-me-alone';
+        $expected = 'http://test.de?utm_campaign=leave-me-alone&utm_medium=email';
         $result = $this->uc->campaignify($input, 'override-attempt');
         $this->assertEquals($expected, $result);
 
         // A campaign plus keyword existing
         $input = 'http://test.de?utm_campaign=leave-me-alone&utm_term=me-too';
-        $expected = 'http://test.de?utm_campaign=leave-me-alone&utm_term=me-too';
+        $expected = 'http://test.de?utm_campaign=leave-me-alone&utm_term=me-too&utm_medium=email';
         $result = $this->uc->campaignify($input, 'override-attempt', '', 'email', 'override-attempt');
         $this->assertEquals($expected, $result);
 
-        // A campaign existing, keyword should NOT be added
-        // (keywords mostly make no sense without their campaign)
+        // A campaign existing, but keyword should be added
+        // (this differs from the original Pixelistik version which does not add keywords
+        // if the campaign already exists)
         $input = 'http://test.de?utm_campaign=leave-me-alone';
-        $expected = 'http://test.de?utm_campaign=leave-me-alone';
+        $expected = 'http://test.de?utm_campaign=leave-me-alone&utm_term=override-attempt&utm_medium=email';
         $result = $this->uc->campaignify($input, 'override-attempt', '', 'email', 'override-attempt');
         $this->assertEquals($expected, $result);
     }

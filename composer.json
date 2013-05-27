@@ -1,6 +1,6 @@
 {
     "name": "neoseeker/url-campaignify",
-    "description": "A PHP class to help add web analytics campaigns to URLs.",
+    "description": "A PHP class to help add Google Analytics campaigns to standalone URLs and URLs inside strings (such as emails)",
     "license": "MIT",
     "require": {
         "php": ">=5.3.0"

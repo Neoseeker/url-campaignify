@@ -97,8 +97,12 @@ You can specify multiple domains as an array:
 
 ### Major Differences Between This Fork and Original
 
-1. Subdomains will be modified by default.
-2. The campaignify() and campaignifyHref() methods has been modified to accept Google Analytics parameters
+1. Uses only Google Analytics: utm_campaign, utm_source, utm_medium etc.  utm_medium defaults to "email"
+2. Subdomains will be modified by default.
+3. The campaignify() and campaignifyHref() methods has been modified to accept Google Analytics parameters
+4. Campaignify will apply to URLs that do not have utm_medium set (the original code only applies campaignify
+if utm_campaign is not set)
+5. Campaignify will not replace utm values already present in URLs.
 
 ### Installation
 
