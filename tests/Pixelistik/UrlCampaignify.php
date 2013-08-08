@@ -1,6 +1,6 @@
 <?php
 namespace Pixelistik;
-
+include '/projects/url-campaignify/src/Pixelistik/UrlCampaignify.php';
 use \Pixelistik\UrlCampaignify;
 
 class UrlCampaignifyTest extends \PHPUnit_Framework_TestCase
@@ -43,6 +43,35 @@ class UrlCampaignifyTest extends \PHPUnit_Framework_TestCase
         $result = $this->uc->campaignify($input, 'newsletter-nov-2012', '', 'email', 'link1');
         $this->assertEquals($expected, $result);
     }
+
+	/**
+	 * Test if the conversion works with URLs being fed in that do not have a
+	 * querystring already
+	 */
+	public function testSingleUrlsWithSpaces()
+	{
+		// unfortunately, spaces inside the URL cannot be supported by campaignify
+		// otherwise it will incorrectly identify URLs in strings.
+		// the expected behaviour therefore below is that campaignify believes
+		// the URL ends at the word "give".
+		$input = 'http://test.de/give one/';
+		$expected = 'http://test.de/give?utm_campaign=newsletter-nov-2012&utm_medium=email one/';
+		$result = $this->uc->campaignify($input, 'newsletter-nov-2012');
+		$this->assertEquals($expected, $result);
+
+		//test encoded spaces
+
+		$input = 'http://test.de/give%20one/';
+		$expected = 'http://test.de/give%20one/?utm_campaign=newsletter-nov-2012&utm_medium=email';
+		$result = $this->uc->campaignify($input, 'newsletter-nov-2012');
+		$this->assertEquals($expected, $result);
+
+		$input = 'http://test.de/give+one/';
+		$expected = 'http://test.de/give+one/?utm_campaign=newsletter-nov-2012&utm_medium=email';
+		$result = $this->uc->campaignify($input, 'newsletter-nov-2012');
+		$this->assertEquals($expected, $result);
+
+	}
 
     /**
      * Test if the conversion works with URLs being fed in that do not have a
